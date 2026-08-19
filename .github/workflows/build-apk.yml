@@ -1,0 +1,59 @@
+name: Build Flutter Android APK
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Install Dart dependencies
+        run: flutter pub get
+
+      # This repo intentionally does NOT commit an android/ folder (it's
+      # machine/SDK-version specific). This step generates it fresh every
+      # run. Because lib/ and pubspec.yaml already exist, `flutter create`
+      # only fills in the missing platform folder — it does not overwrite
+      # our source code.
+      - name: Generate the Android platform folder
+        run: flutter create --platforms=android --org com.abcpharmacy --project-name pharmacy_app_flutter .
+
+      - name: Re-resolve dependencies after platform generation
+        run: flutter pub get
+
+      - name: Apply the ABC Pharmacy launcher icon
+        run: dart run flutter_launcher_icons
+
+      # Sets the visible app name and allows plain-HTTP traffic to the
+      # ASP.NET Core dev server (which isn't running HTTPS).
+      - name: Patch AndroidManifest.xml (app name + cleartext HTTP)
+        run: |
+          python3 - <<'EOF'
+          import re
+          path = "android/app/src/main/AndroidManifest.xml"
+          with open(path) as f:
+              xml = f.read()
+          xml = re.sub(r'android:label="[^"]*"', 'android:label="ABC Pharmacy"', xml)
+          if "usesCleartextTraffic" not in xml:
+              xml = xml.replace("<application", '<application\n        android:usesCleartextTraffic="true"', 1)
+          with open(path, "w") as f:
+              f.write(xml)
+          EOF
+
+      - name: Build debug APK
+        run: flutter build apk --debug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ABCPharmacy-flutter-debug-apk
+          path: build/app/outputs/flutter-apk/app-debug.apk

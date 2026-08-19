@@ -1,0 +1,32 @@
+name: pharmacy_app_flutter
+description: "ABC Pharmacy medicine tracker - Flutter client for the ASP.NET Core API."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.2.2
+  intl: ^0.19.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.13.1
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/icon/
+
+# Run `dart run flutter_launcher_icons` after `flutter create .` to apply
+# the ABC Pharmacy icon to the generated Android project.
+flutter_launcher_icons:
+  android: true
+  image_path: "assets/icon/icon.png"
+  adaptive_icon_background: "#0E6B57"
+  adaptive_icon_foreground: "assets/icon/icon_foreground.png"
