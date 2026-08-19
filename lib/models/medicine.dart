@@ -17,20 +17,21 @@ class Medicine {
     required this.brand,
   });
 
-  factory Medicine.fromJson(Map<String, dynamic> json) {
+  factory Medicine.fromMap(Map<String, dynamic> map) {
     return Medicine(
-      id: json['id'] as String,
-      fullName: json['fullName'] as String? ?? '',
-      notes: json['notes'] as String? ?? '',
-      expiryDate: DateTime.parse(json['expiryDate'] as String),
-      quantity: (json['quantity'] as num).toInt(),
-      price: (json['price'] as num).toDouble(),
-      brand: json['brand'] as String? ?? '',
+      id: map['id'] as String,
+      fullName: map['fullName'] as String? ?? '',
+      notes: map['notes'] as String? ?? '',
+      expiryDate: DateTime.parse(map['expiryDate'] as String),
+      quantity: (map['quantity'] as num).toInt(),
+      price: (map['price'] as num).toDouble(),
+      brand: map['brand'] as String? ?? '',
     );
   }
 
-  Map<String, dynamic> toRequestJson() {
+  Map<String, dynamic> toMap() {
     return {
+      'id': id,
       'fullName': fullName,
       'notes': notes,
       'expiryDate': expiryDate.toIso8601String(),
@@ -38,6 +39,25 @@ class Medicine {
       'price': price,
       'brand': brand,
     };
+  }
+
+  Medicine copyWith({
+    String? fullName,
+    String? notes,
+    DateTime? expiryDate,
+    int? quantity,
+    double? price,
+    String? brand,
+  }) {
+    return Medicine(
+      id: id,
+      fullName: fullName ?? this.fullName,
+      notes: notes ?? this.notes,
+      expiryDate: expiryDate ?? this.expiryDate,
+      quantity: quantity ?? this.quantity,
+      price: price ?? this.price,
+      brand: brand ?? this.brand,
+    );
   }
 
   int get daysUntilExpiry {

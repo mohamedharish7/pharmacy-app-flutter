@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/medicine.dart';
-import '../services/api_service.dart';
+import '../services/database_service.dart';
 import 'sales_log_screen.dart';
 import '../widgets/medicine_tile.dart';
 import '../widgets/add_edit_medicine_dialog.dart';
@@ -14,7 +14,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final _api = ApiService();
+  final _db = DatabaseService.instance;
   final _searchController = TextEditingController();
 
   List<Medicine> _medicines = [];
@@ -39,7 +39,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _error = null;
     });
     try {
-      final meds = await _api.getMedicines(search: search);
+      final meds = await _db.getMedicines(search: search);
       setState(() {
         _medicines = meds;
         _loading = false;
@@ -98,7 +98,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
     if (confirmed == true) {
       try {
-        await _api.deleteMedicine(medicine.id);
+        await _db.deleteMedicine(medicine.id);
         _showSnack('Medicine removed.');
         _loadMedicines(search: _searchController.text);
       } catch (e) {

@@ -33,9 +33,8 @@ jobs:
       - name: Apply the ABC Pharmacy launcher icon
         run: dart run flutter_launcher_icons
 
-      # Sets the visible app name and allows plain-HTTP traffic to the
-      # ASP.NET Core dev server (which isn't running HTTPS).
-      - name: Patch AndroidManifest.xml (app name + cleartext HTTP)
+      # Sets the app's visible display name.
+      - name: Patch AndroidManifest.xml (app name)
         run: |
           python3 - <<'EOF'
           import re
@@ -43,8 +42,6 @@ jobs:
           with open(path) as f:
               xml = f.read()
           xml = re.sub(r'android:label="[^"]*"', 'android:label="ABC Pharmacy"', xml)
-          if "usesCleartextTraffic" not in xml:
-              xml = xml.replace("<application", '<application\n        android:usesCleartextTraffic="true"', 1)
           with open(path, "w") as f:
               f.write(xml)
           EOF

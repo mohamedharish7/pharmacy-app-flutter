@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/medicine.dart';
-import '../services/api_service.dart';
+import '../services/database_service.dart';
 
 class SellDialog extends StatefulWidget {
   final Medicine medicine;
@@ -13,7 +13,7 @@ class SellDialog extends StatefulWidget {
 class _SellDialogState extends State<SellDialog> {
   final _formKey = GlobalKey<FormState>();
   final _quantityController = TextEditingController();
-  final _api = ApiService();
+  final _db = DatabaseService.instance;
 
   bool _saving = false;
   String? _error;
@@ -31,7 +31,7 @@ class _SellDialogState extends State<SellDialog> {
       _error = null;
     });
     try {
-      await _api.recordSale(
+      await _db.recordSale(
         medicineId: widget.medicine.id,
         quantitySold: int.parse(_quantityController.text.trim()),
       );

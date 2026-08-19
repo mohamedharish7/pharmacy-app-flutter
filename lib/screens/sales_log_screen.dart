@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/sale.dart';
-import '../services/api_service.dart';
+import '../services/database_service.dart';
 
 class SalesLogScreen extends StatefulWidget {
   const SalesLogScreen({super.key});
@@ -11,7 +11,7 @@ class SalesLogScreen extends StatefulWidget {
 }
 
 class _SalesLogScreenState extends State<SalesLogScreen> {
-  final _api = ApiService();
+  final _db = DatabaseService.instance;
   List<Sale> _sales = [];
   bool _loading = true;
   String? _error;
@@ -28,7 +28,7 @@ class _SalesLogScreenState extends State<SalesLogScreen> {
       _error = null;
     });
     try {
-      final sales = await _api.getSales();
+      final sales = await _db.getSales();
       setState(() {
         _sales = sales;
         _loading = false;

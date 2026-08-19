@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/medicine.dart';
-import '../services/api_service.dart';
+import '../services/database_service.dart';
 
 class AddEditMedicineDialog extends StatefulWidget {
   final Medicine? medicine;
@@ -12,7 +12,7 @@ class AddEditMedicineDialog extends StatefulWidget {
 
 class _AddEditMedicineDialogState extends State<AddEditMedicineDialog> {
   final _formKey = GlobalKey<FormState>();
-  final _api = ApiService();
+  final _db = DatabaseService.instance;
 
   late final TextEditingController _fullName;
   late final TextEditingController _brand;
@@ -83,9 +83,9 @@ class _AddEditMedicineDialogState extends State<AddEditMedicineDialog> {
 
     try {
       if (_isEdit) {
-        await _api.updateMedicine(widget.medicine!.id, medicine);
+        await _db.updateMedicine(widget.medicine!.id, medicine);
       } else {
-        await _api.addMedicine(medicine);
+        await _db.addMedicine(medicine);
       }
       if (mounted) Navigator.pop(context, true);
     } catch (e) {

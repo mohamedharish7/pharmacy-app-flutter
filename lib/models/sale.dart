@@ -17,15 +17,27 @@ class Sale {
     required this.saleDate,
   });
 
-  factory Sale.fromJson(Map<String, dynamic> json) {
+  factory Sale.fromMap(Map<String, dynamic> map) {
     return Sale(
-      id: json['id'] as String,
-      medicineId: json['medicineId'] as String,
-      medicineName: json['medicineName'] as String? ?? '',
-      quantitySold: (json['quantitySold'] as num).toInt(),
-      unitPrice: (json['unitPrice'] as num).toDouble(),
-      totalAmount: (json['totalAmount'] as num).toDouble(),
-      saleDate: DateTime.parse(json['saleDate'] as String),
+      id: map['id'] as String,
+      medicineId: map['medicineId'] as String,
+      medicineName: map['medicineName'] as String? ?? '',
+      quantitySold: (map['quantitySold'] as num).toInt(),
+      unitPrice: (map['unitPrice'] as num).toDouble(),
+      totalAmount: (map['totalAmount'] as num).toDouble(),
+      saleDate: DateTime.parse(map['saleDate'] as String),
     );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'medicineId': medicineId,
+      'medicineName': medicineName,
+      'quantitySold': quantitySold,
+      'unitPrice': unitPrice,
+      'totalAmount': totalAmount,
+      'saleDate': saleDate.toIso8601String(),
+    };
   }
 }

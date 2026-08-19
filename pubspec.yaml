@@ -1,5 +1,5 @@
 name: pharmacy_app_flutter
-description: "ABC Pharmacy medicine tracker - Flutter client for the ASP.NET Core API."
+description: "ABC Pharmacy medicine tracker - offline Flutter app with local SQLite storage."
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -9,7 +9,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  http: ^1.2.2
+  sqflite: ^2.3.3+1
+  path: ^1.9.0
+  uuid: ^4.4.0
   intl: ^0.19.0
 
 dev_dependencies:
