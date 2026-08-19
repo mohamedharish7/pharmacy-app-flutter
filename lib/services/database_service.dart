@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
@@ -34,7 +36,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE medicines (
@@ -44,7 +46,8 @@ class DatabaseService {
             expiryDate TEXT NOT NULL,
             quantity INTEGER NOT NULL,
             price REAL NOT NULL,
-            brand TEXT NOT NULL
+            brand TEXT NOT NULL,
+            imagePath TEXT
           )
         ''');
         await db.execute('''
@@ -59,6 +62,13 @@ class DatabaseService {
           )
         ''');
         await _seedMedicines(db);
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          // Existing installs (before the photo feature) get the new
+          // column added in place — no data loss, no reinstall needed.
+          await db.execute('ALTER TABLE medicines ADD COLUMN imagePath TEXT');
+        }
       },
     );
   }
@@ -159,6 +169,7 @@ class DatabaseService {
       quantity: draft.quantity,
       price: draft.price,
       brand: draft.brand,
+      imagePath: draft.imagePath,
     );
     await db.insert('medicines', medicine.toMap());
     return medicine;
@@ -174,6 +185,7 @@ class DatabaseService {
       quantity: draft.quantity,
       price: draft.price,
       brand: draft.brand,
+      imagePath: draft.imagePath,
     );
     final rows = await db.update('medicines', updated.toMap(), where: 'id = ?', whereArgs: [id]);
     if (rows == 0) {
@@ -184,9 +196,19 @@ class DatabaseService {
 
   Future<void> deleteMedicine(String id) async {
     final db = await _db;
-    final rows = await db.delete('medicines', where: 'id = ?', whereArgs: [id]);
-    if (rows == 0) {
+    final rows = await db.query('medicines', where: 'id = ?', whereArgs: [id]);
+    final deleted = await db.delete('medicines', where: 'id = ?', whereArgs: [id]);
+    if (deleted == 0) {
       throw AppException('Medicine not found.');
+    }
+    if (rows.isNotEmpty) {
+      final imagePath = rows.first['imagePath'] as String?;
+      if (imagePath != null) {
+        final file = File(imagePath);
+        if (await file.exists()) {
+          await file.delete();
+        }
+      }
     }
   }
 

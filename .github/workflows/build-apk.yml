@@ -30,6 +30,25 @@ jobs:
       - name: Re-resolve dependencies after platform generation
         run: flutter pub get
 
+      # google_mlkit_text_recognition (used for the photo-scan/autofill
+      # feature) requires minSdkVersion 21+. Flutter's generated project
+      # usually already satisfies this, but this patch makes it explicit
+      # regardless of which Gradle file syntax the current Flutter version
+      # generates (Groovy build.gradle or Kotlin build.gradle.kts).
+      - name: Ensure minSdkVersion 21+
+        run: |
+          python3 - <<'EOF'
+          import re, glob
+          for path in glob.glob("android/app/build.gradle*"):
+              with open(path) as f:
+                  content = f.read()
+              content = re.sub(r'minSdk(?:Version)?\s*=?\s*flutter\.minSdkVersion',
+                                'minSdkVersion 21' if path.endswith('.gradle') else 'minSdk = 21',
+                                content)
+              with open(path, "w") as f:
+                  f.write(content)
+          EOF
+
       - name: Apply the ABC Pharmacy launcher icon
         run: dart run flutter_launcher_icons
 

@@ -6,6 +6,7 @@ class Medicine {
   final int quantity;
   final double price;
   final String brand;
+  final String? imagePath;
 
   Medicine({
     required this.id,
@@ -15,6 +16,7 @@ class Medicine {
     required this.quantity,
     required this.price,
     required this.brand,
+    this.imagePath,
   });
 
   factory Medicine.fromMap(Map<String, dynamic> map) {
@@ -26,6 +28,7 @@ class Medicine {
       quantity: (map['quantity'] as num).toInt(),
       price: (map['price'] as num).toDouble(),
       brand: map['brand'] as String? ?? '',
+      imagePath: map['imagePath'] as String?,
     );
   }
 
@@ -38,6 +41,7 @@ class Medicine {
       'quantity': quantity,
       'price': price,
       'brand': brand,
+      'imagePath': imagePath,
     };
   }
 
@@ -48,6 +52,7 @@ class Medicine {
     int? quantity,
     double? price,
     String? brand,
+    String? imagePath,
   }) {
     return Medicine(
       id: id,
@@ -57,6 +62,7 @@ class Medicine {
       quantity: quantity ?? this.quantity,
       price: price ?? this.price,
       brand: brand ?? this.brand,
+      imagePath: imagePath ?? this.imagePath,
     );
   }
 

@@ -1,6 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../models/medicine.dart';
 import '../services/database_service.dart';
+import '../services/ocr_service.dart';
+import '../services/photo_storage_service.dart';
 
 class AddEditMedicineDialog extends StatefulWidget {
   final Medicine? medicine;
@@ -13,6 +17,9 @@ class AddEditMedicineDialog extends StatefulWidget {
 class _AddEditMedicineDialogState extends State<AddEditMedicineDialog> {
   final _formKey = GlobalKey<FormState>();
   final _db = DatabaseService.instance;
+  final _picker = ImagePicker();
+  final _ocr = OcrService();
+  final _photoStorage = PhotoStorageService();
 
   late final TextEditingController _fullName;
   late final TextEditingController _brand;
@@ -21,7 +28,11 @@ class _AddEditMedicineDialogState extends State<AddEditMedicineDialog> {
   late final TextEditingController _notes;
   DateTime? _expiryDate;
 
+  String? _imagePath; // saved (permanent) photo path, if any
+  List<String> _detectedLines = [];
+
   bool _saving = false;
+  bool _scanning = false;
   String? _error;
 
   bool get _isEdit => widget.medicine != null;
@@ -36,6 +47,7 @@ class _AddEditMedicineDialogState extends State<AddEditMedicineDialog> {
     _price = TextEditingController(text: m != null ? m.price.toStringAsFixed(2) : '');
     _notes = TextEditingController(text: m?.notes ?? '');
     _expiryDate = m?.expiryDate;
+    _imagePath = m?.imagePath;
   }
 
   @override
@@ -45,6 +57,7 @@ class _AddEditMedicineDialogState extends State<AddEditMedicineDialog> {
     _quantity.dispose();
     _price.dispose();
     _notes.dispose();
+    _ocr.dispose();
     super.dispose();
   }
 
@@ -57,6 +70,77 @@ class _AddEditMedicineDialogState extends State<AddEditMedicineDialog> {
       lastDate: DateTime(now.year + 15),
     );
     if (picked != null) setState(() => _expiryDate = picked);
+  }
+
+  Future<void> _scanMedicinePhoto() async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: const Text('Take a photo'),
+              onTap: () => Navigator.pop(ctx, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Choose from gallery'),
+              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (source == null) return;
+
+    XFile? picked;
+    try {
+      picked = await _picker.pickImage(source: source, imageQuality: 85);
+    } catch (e) {
+      _showError('Could not open camera/gallery: $e');
+      return;
+    }
+    if (picked == null) return;
+
+    setState(() {
+      _scanning = true;
+      _error = null;
+    });
+
+    try {
+      final savedPath = await _photoStorage.saveMedicinePhoto(File(picked.path));
+      final lines = await _ocr.recognizeCandidateLines(File(savedPath));
+
+      setState(() {
+        _imagePath = savedPath;
+        _detectedLines = lines.take(8).toList();
+        _scanning = false;
+      });
+
+      if (lines.isNotEmpty) {
+        _fullName.text = lines[0];
+        if (lines.length > 1) _brand.text = lines[1];
+        _showSnack('Photo scanned — check Name/Brand below and fix if needed.');
+      } else {
+        _showSnack("Couldn't read any text from that photo. Try better lighting, or type it in manually.");
+      }
+    } catch (e) {
+      setState(() => _scanning = false);
+      _showError('Scan failed: $e');
+    }
+  }
+
+  void _showSnack(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  void _showError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red.shade700),
+    );
   }
 
   Future<void> _save() async {
@@ -79,6 +163,7 @@ class _AddEditMedicineDialogState extends State<AddEditMedicineDialog> {
       quantity: int.parse(_quantity.text.trim()),
       price: double.parse(_price.text.trim()),
       brand: _brand.text.trim(),
+      imagePath: _imagePath,
     );
 
     try {
@@ -109,6 +194,8 @@ class _AddEditMedicineDialogState extends State<AddEditMedicineDialog> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                _buildPhotoScanArea(),
+                const SizedBox(height: 14),
                 TextFormField(
                   controller: _fullName,
                   decoration: const InputDecoration(labelText: 'Full name'),
@@ -120,6 +207,10 @@ class _AddEditMedicineDialogState extends State<AddEditMedicineDialog> {
                   decoration: const InputDecoration(labelText: 'Brand'),
                   validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
                 ),
+                if (_detectedLines.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  _buildDetectedLinesPicker(),
+                ],
                 const SizedBox(height: 12),
                 InkWell(
                   onTap: _pickDate,
@@ -193,6 +284,78 @@ class _AddEditMedicineDialogState extends State<AddEditMedicineDialog> {
               : const Text('Save medicine'),
         ),
       ],
+    );
+  }
+
+  Widget _buildPhotoScanArea() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: _imagePath != null
+              ? Image.file(File(_imagePath!), width: 64, height: 64, fit: BoxFit.cover)
+              : Container(
+                  width: 64,
+                  height: 64,
+                  color: const Color(0xFFEEF3F1),
+                  child: const Icon(Icons.medication_outlined, color: Colors.black38),
+                ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: _scanning ? null : _scanMedicinePhoto,
+            icon: _scanning
+                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(Icons.camera_alt_outlined, size: 18),
+            label: Text(_scanning
+                ? 'Reading photo…'
+                : (_imagePath == null ? 'Scan medicine photo' : 'Rescan photo')),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDetectedLinesPicker() {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7FAF9),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFDBE3DF)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Detected text — tap to use for a field:',
+            style: TextStyle(fontSize: 11.5, color: Colors.black54, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 6),
+          ..._detectedLines.map((line) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(line, style: const TextStyle(fontSize: 12.5), overflow: TextOverflow.ellipsis),
+                    ),
+                    TextButton(
+                      style: TextButton.styleFrom(minimumSize: const Size(0, 28), padding: const EdgeInsets.symmetric(horizontal: 8)),
+                      onPressed: () => setState(() => _fullName.text = line),
+                      child: const Text('Name', style: TextStyle(fontSize: 11.5)),
+                    ),
+                    TextButton(
+                      style: TextButton.styleFrom(minimumSize: const Size(0, 28), padding: const EdgeInsets.symmetric(horizontal: 8)),
+                      onPressed: () => setState(() => _brand.text = line),
+                      child: const Text('Brand', style: TextStyle(fontSize: 11.5)),
+                    ),
+                  ],
+                ),
+              )),
+        ],
+      ),
     );
   }
 }
